@@ -9,80 +9,91 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
-    // INDEX + SEARCH + FILTER
+    /*
+    |-------------------------------
+    | INDEX (SEARCH + FILTER)
+    |-------------------------------
+    */
     public function index(Request $request)
     {
-        $query = Product::with('category');
+        $products = Product::with('category')
+            ->when($request->search, function ($query) use ($request) {
+                $query->where('name', 'like', "%{$request->search}%")
+                      ->orWhere('sku', 'like', "%{$request->search}%");
+            })
+            ->when($request->category_id, function ($query) use ($request) {
+                $query->where('category_id', $request->category_id);
+            })
+            ->latest()
+            ->get();
 
-        // SEARCH (name / sku)
-        if ($request->search) {
-            $query->where(function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('sku', 'like', '%' . $request->search . '%');
-            });
-        }
-
-        // FILTER CATEGORY
-        if ($request->category_id) {
-            $query->where('category_id', $request->category_id);
-        }
-
-        $products = $query->latest()->get();
         $categories = Category::all();
 
         return view('products.index', compact('products', 'categories'));
     }
 
-    // STORE (CREATE + IMAGE)
+    /*
+    |-------------------------------
+    | STORE (CREATE PRODUCT)
+    |-------------------------------
+    */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'category_id' => 'required',
-            'name' => 'required',
-            'sku' => 'required',
-            'stock' => 'required',
-            'price' => 'required',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
+            'name'        => 'required',
+            'sku'         => 'required',
+            'stock'       => 'required|numeric',
+            'price'       => 'required|numeric',
+            'image'       => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
         ]);
 
-        $data = $request->only([
-            'category_id', 'name', 'sku', 'stock', 'price'
-        ]);
-
-        // UPLOAD IMAGE
         if ($request->hasFile('image')) {
             $file = $request->file('image');
             $filename = time() . '.' . $file->getClientOriginalExtension();
             $file->storeAs('products', $filename, 'public');
-            $data['image'] = $filename;
+            $validated['image'] = $filename;
         }
 
-        Product::create($data);
+        Product::create($validated);
 
-        return redirect('/products');
+        return redirect()->route('products.index');
     }
 
-    // UPDATE + IMAGE REPLACE
+    /*
+    |-------------------------------
+    | EDIT PAGE
+    |-------------------------------
+    */
+    public function edit($id)
+    {
+        $product = Product::findOrFail($id);
+        $categories = Category::all();
+
+        return view('products.edit', compact('product', 'categories'));
+    }
+
+    /*
+    |-------------------------------
+    | UPDATE PRODUCT
+    |-------------------------------
+    */
     public function update(Request $request, $id)
     {
-        $request->validate([
+        $validated = $request->validate([
             'category_id' => 'required',
-            'name' => 'required',
-            'sku' => 'required',
-            'stock' => 'required',
-            'price' => 'required',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
+            'name'        => 'required',
+            'sku'         => 'required',
+            'stock'       => 'required|numeric',
+            'price'       => 'required|numeric',
+            'image'       => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
         ]);
 
         $product = Product::findOrFail($id);
 
-        $data = $request->only([
-            'category_id', 'name', 'sku', 'stock', 'price'
-        ]);
-
-        // UPDATE IMAGE (hapus lama jika ada)
         if ($request->hasFile('image')) {
 
+            // hapus image lama
             if ($product->image) {
                 Storage::disk('public')->delete('products/' . $product->image);
             }
@@ -91,15 +102,19 @@ class ProductController extends Controller
             $filename = time() . '.' . $file->getClientOriginalExtension();
             $file->storeAs('products', $filename, 'public');
 
-            $data['image'] = $filename;
+            $validated['image'] = $filename;
         }
 
-        $product->update($data);
+        $product->update($validated);
 
-        return redirect('/products');
+        return redirect()->route('products.index');
     }
 
-    // DELETE + HAPUS IMAGE
+    /*
+    |-------------------------------
+    | DELETE PRODUCT
+    |-------------------------------
+    */
     public function destroy($id)
     {
         $product = Product::findOrFail($id);
@@ -110,6 +125,6 @@ class ProductController extends Controller
 
         $product->delete();
 
-        return redirect('/products');
+        return redirect()->route('products.index');
     }
 }

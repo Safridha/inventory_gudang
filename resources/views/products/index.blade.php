@@ -1,14 +1,99 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Products CRUD</title>
+    <title>Inventory Gudang - Products</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h2, h3 {
+            margin-bottom: 10px;
+        }
+
+        /* CARD */
+        .card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 15px;
+        }
+
+        /* FORM */
+        input, select {
+            padding: 8px;
+            margin: 5px 5px 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-edit {
+            background: #2ecc71;
+            color: white;
+        }
+
+        .btn-reset {
+            background: #95a5a6;
+            color: white;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+
+        /* PRODUCT CARD */
+        .product {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .product-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .product img {
+            border-radius: 8px;
+            object-fit: cover;
+        }
+
+        .actions {
+            display: flex;
+            gap: 5px;
+        }
+    </style>
 </head>
 <body>
 
-<h1>Products (1 Page CRUD)</h1>
+<h2>📦 Inventory Gudang - Products</h2>
 
 {{-- ================= SEARCH & FILTER ================= --}}
-<form method="GET" action="/products" style="margin-bottom:20px;">
+<div class="card">
+
+<form method="GET" action="/products">
 
     <input type="text" name="search" placeholder="Cari nama / SKU"
         value="{{ request('search') }}">
@@ -23,15 +108,17 @@
         @endforeach
     </select>
 
-    <button type="submit">Filter</button>
+    <button class="btn-primary" type="submit">Filter</button>
 
-    <a href="/products">Reset</a>
+    <a class="btn-reset" href="/products">Reset</a>
 </form>
 
-<hr>
+</div>
 
 {{-- ================= CREATE PRODUCT ================= --}}
-<h3>Tambah Product</h3>
+<div class="card">
+
+<h3>➕ Tambah Product</h3>
 
 <form action="/products" method="POST" enctype="multipart/form-data">
     @csrf
@@ -49,52 +136,50 @@
     <input type="number" name="price" placeholder="Price">
     <input type="file" name="image">
 
-    <button type="submit">Simpan</button>
+    <button class="btn-primary" type="submit">Simpan</button>
 </form>
 
-<hr>
+</div>
 
-{{-- ================= LIST PRODUCT ================= --}}
-<h3>List Products</h3>
+{{-- ================= LIST PRODUCTS ================= --}}
+<h3>📋 List Products</h3>
 
 @foreach($products as $p)
 
-    {{-- UPDATE --}}
-    <form action="/products/{{ $p->id }}" method="POST" enctype="multipart/form-data" style="margin-bottom:10px;">
-        @csrf
-        @method('PUT')
+<div class="card product">
 
-        <select name="category_id">
-            @foreach($categories as $c)
-                <option value="{{ $c->id }}"
-                    {{ $p->category_id == $c->id ? 'selected' : '' }}>
-                    {{ $c->name }}
-                </option>
-            @endforeach
-        </select>
+    <div class="product-info">
 
-        <input type="text" name="name" value="{{ $p->name }}">
-        <input type="text" name="sku" value="{{ $p->sku }}">
-        <input type="number" name="stock" value="{{ $p->stock }}">
-        <input type="number" name="price" value="{{ $p->price }}">
-        <input type="file" name="image">
+        @if($p->image)
+            <img src="{{ asset('storage/products/' . $p->image) }}" width="70" height="70">
+        @endif
 
-        <button type="submit">Update</button>
-    </form>
+        <div>
+            <b>{{ $p->name }}</b><br>
+            <small>SKU: {{ $p->sku }}</small><br>
+            <small>Stock: {{ $p->stock }}</small><br>
+            <small>Price: Rp {{ number_format($p->price) }}</small>
+        </div>
 
-    {{-- IMAGE --}}
-    @if($p->image)
-        <img src="{{ asset('storage/products/' . $p->image) }}" width="80">
-    @endif
+    </div>
 
-    {{-- DELETE --}}
-    <form action="/products/{{ $p->id }}" method="POST">
-        @csrf
-        @method('DELETE')
-        <button onclick="return confirm('Delete?')">Delete</button>
-    </form>
+    <div class="actions">
 
-    <hr>
+        <a href="/products/{{ $p->id }}/edit">
+            <button class="btn-edit" type="button">Edit</button>
+        </a>
+
+        <form action="/products/{{ $p->id }}" method="POST">
+            @csrf
+            @method('DELETE')
+            <button class="btn-danger" onclick="return confirm('Delete?')">
+                Delete
+            </button>
+        </form>
+
+    </div>
+
+</div>
 
 @endforeach
 
